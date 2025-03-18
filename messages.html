@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messages - Social Media</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .messages-container {
+            width: 90%;
+            max-width: 800px;
+            margin: 100px auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            overflow: hidden;
+        }
+
+        .users-list {
+            width: 300px;
+            border-right: 1px solid #eee;
+            overflow-y: auto;
+            max-height: 600px;
+        }
+
+        .user-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .user-item.active {
+            background-color: #e1306c;
+            color: white;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+        }
+
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+        }
+
+        .chat-header {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            background-color: #f8f9fa;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            max-width: 70%;
+            padding: 10px;
+            border-radius: 10px;
+            margin: 5px 0;
+        }
+
+        .message.sent {
+            background-color: #e1306c;
+            color: white;
+            align-self: flex-end;
+        }
+
+        .message.received {
+            background-color: #f0f2f5;
+            align-self: flex-start;
+        }
+
+        .message-info {
+            font-size: 12px;
+            margin-top: 5px;
+            opacity: 0.7;
+        }
+
+        .message-form {
+            padding: 15px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            outline: none;
+        }
+
+        .send-btn {
+            padding: 10px 20px;
+            background-color: #e1306c;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+
+        .send-btn:hover {
+            background-color: #c12457;
+        }
+
+        .no-chat-selected {
+            display: flex;
+            flex: 1;
+            justify-content: center;
+            align-items: center;
+            color: #666;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">Daddy Love</div>
+        <ul>
+            <li><a href="index.html"><i class="fas fa-home"></i> Home</a></li>
+            <li><a href="profile.html"><i class="fas fa-user"></i> Profile</a></li>
+            <li><a href="messages.html" class="active"><i class="fas fa-envelope"></i> Messages</a></li>
+            <li><a href="notification.html"><i class="fas fa-bell"></i> Notifications</a></li>
+            <li><a href="settings.html"><i class="fas fa-cog"></i> Settings</a></li>
+        </ul>
+    </nav>
+
+    <div class="messages-container">
+        <div class="users-list" id="usersList">
+            <!-- User list will be populated here -->
+        </div>
+        <div class="chat-area" id="chatArea">
+            <div class="no-chat-selected" id="noChatSelected">
+                Select a user to start chatting
+            </div>
+            <div class="chat-content" id="chatContent" style="display: none;">
+                <div class="chat-header" id="chatHeader"></div>
+                <div class="messages" id="messagesContainer"></div>
+                <form class="message-form" id="messageForm">
+                    <input type="text" class="message-input" id="messageInput" placeholder="Type a message...">
+                    <button type="submit" class="send-btn">Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get current user from localStorage
+        const currentUser = JSON.parse(localStorage.getItem('user'));
+        if (!currentUser) {
+            window.location.href = 'login.html';
+        }
+
+        let selectedUser = null;
+        const usersList = document.getElementById('usersList');
+        const chatContent = document.getElementById('chatContent');
+        const noChatSelected = document.getElementById('noChatSelected');
+        const chatHeader = document.getElementById('chatHeader');
+        const messagesContainer = document.getElementById('messagesContainer');
+        const messageForm = document.getElementById('messageForm');
+        const messageInput = document.getElementById('messageInput');
+
+        // Load all users
+        async function loadUsers() {
+            try {
+                const response = await fetch('http://localhost:3000/users');
+                const data = await response.json();
+                
+                if (data.success) {
+                    usersList.innerHTML = '';
+                    data.users.forEach(user => {
+                        if (user.id !== currentUser.id) {
+                            const userItem = document.createElement('div');
+                            userItem.className = 'user-item';
+                            userItem.innerHTML = `
+                                <img src="${user.profile_pic || 'https://via.placeholder.com/40'}" alt="${user.username}" class="user-avatar">
+                                <div class="user-info">
+                                    <div class="username">${user.username}</div>
+                                </div>
+                            `;
+                            userItem.addEventListener('click', () => selectUser(user));
+                            usersList.appendChild(userItem);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        // Select a user to chat with
+        function selectUser(user) {
+            selectedUser = user;
+            document.querySelectorAll('.user-item').forEach(item => item.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            
+            chatHeader.textContent = user.username;
+            noChatSelected.style.display = 'none';
+            chatContent.style.display = 'flex';
+            chatContent.style.flexDirection = 'column';
+            chatContent.style.height = '100%';
+            
+            loadMessages();
+        }
+
+        // Load messages for selected user
+        async function loadMessages() {
+            if (!selectedUser) return;
+
+            try {
+                const response = await fetch(`http://localhost:3000/get-messages/${currentUser.id}/${selectedUser.id}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    messagesContainer.innerHTML = '';
+                    data.messages.forEach(msg => {
+                        const messageDiv = document.createElement('div');
+                        messageDiv.className = `message ${msg.sender_id === currentUser.id ? 'sent' : 'received'}`;
+                        messageDiv.innerHTML = `
+                            <div class="message-content">${msg.content}</div>
+                            <div class="message-info">
+                                ${new Date(msg.created_at).toLocaleTimeString()}
+                            </div>
+                        `;
+                        messagesContainer.appendChild(messageDiv);
+                    });
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }
+            } catch (error) {
+                console.error('Error loading messages:', error);
+            }
+        }
+
+        // Send message
+        messageForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!selectedUser || !messageInput.value.trim()) return;
+
+            try {
+                const response = await fetch('http://localhost:3000/send-message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sender_id: currentUser.id,
+                        receiver_id: selectedUser.id,
+                        content: messageInput.value.trim()
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    messageInput.value = '';
+                    loadMessages();
+                }
+            } catch (error) {
+                console.error('Error sending message:', error);
+            }
+        });
+
+        // Load users when page loads
+        window.onload = loadUsers;
+
+        // Periodically refresh messages
+        setInterval(() => {
+            if (selectedUser) {
+                loadMessages();
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
